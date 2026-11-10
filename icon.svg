@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="128" fill="url(#grad)"/>
+  <!-- Canopy Roof -->
+  <path d="M110 180 L402 180 L380 230 C380 245 365 255 350 255 C335 255 320 245 320 230 C320 245 305 255 290 255 C275 255 260 245 260 230 C260 245 245 255 230 255 C215 255 200 245 200 230 C200 245 185 255 170 255 C155 255 140 245 140 230 L110 180 Z" fill="#34d399" filter="url(#shadow)"/>
+  <!-- Store Front Body -->
+  <rect x="135" y="240" width="242" height="150" rx="12" fill="#ffffff" filter="url(#shadow)"/>
+  <!-- Door / Window -->
+  <rect x="165" y="270" width="70" height="120" rx="6" fill="#10b981"/>
+  <rect x="260" y="270" width="90" height="70" rx="6" fill="#e0f2fe"/>
+  <!-- Shopping Bag / Cart Badge -->
+  <circle cx="360" cy="150" r="48" fill="#f59e0b" filter="url(#shadow)"/>
+  <!-- Rupiah Rp text inside badge -->
+  <text x="360" y="162" font-family="Arial, sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle">Rp</text>
+  <!-- Shop name in front -->
+  <text x="256" y="440" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="36" fill="#ecfdf5" text-anchor="middle" letter-spacing="1">WARUNGKU</text>
+</svg>

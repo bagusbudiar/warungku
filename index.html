@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#059669">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>WarungKu POS - Kasir & Toko Online</title>
+  
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            warung: {
+              50: '#ecfdf5',
+              100: '#d1fae5',
+              500: '#10b981',
+              600: '#059669',
+              700: '#047857',
+              800: '#065f46',
+              900: '#064e3b',
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Styling khusus struk cetak */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #receipt-modal, #receipt-paper-content, #receipt-paper-content * {
+        visibility: visible;
+      }
+      #receipt-modal {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        background: white;
+        padding: 0;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+
+    /* Mencegah bounce scroll di iOS/Android */
+    html, body {
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    /* Scrollbar halus */
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-gray-100 text-gray-900 min-h-screen flex flex-col font-sans antialiased pb-20 select-none">
+
+  <!-- TOP APP BAR -->
+  <header class="sticky top-0 z-30 bg-emerald-700 text-white shadow-md border-b border-emerald-800">
+    <div class="max-w-4xl mx-auto px-4 py-2.5 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <div class="w-9 h-9 rounded-xl bg-emerald-800/80 border border-emerald-500/30 flex items-center justify-center text-lg shadow-inner">
+          🏪
+        </div>
+        <div>
+          <h1 id="store-name-display" class="font-bold text-sm sm:text-base leading-tight">Warung Berkah</h1>
+          <div id="network-status-badge" class="mt-0.5">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-900/60 text-emerald-200">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Online
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Shortcut Toko Online Pelanggan -->
+        <button onclick="App.openOnlineStorefront()"
+          class="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-xs font-semibold text-emerald-100 border border-emerald-600/50 shadow-sm transition active:scale-95">
+          <span>🌐</span>
+          <span class="hidden sm:inline">Katalog</span> Online
+        </button>
+
+        <!-- Scanner Barcode Kamera -->
+        <button onclick="App.openBarcodeScanner()"
+          class="p-2 rounded-lg bg-emerald-800 hover:bg-emerald-900 text-emerald-100 border border-emerald-600/50 shadow-sm transition active:scale-95"
+          title="Scan Barcode Kamera">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN CONTAINER -->
+  <main class="flex-1 max-w-4xl w-full mx-auto p-3 sm:p-4">
+
+    <!-- ========================================== -->
+    <!-- TAB 1: KASIR (POINT OF SALE)               -->
+    <!-- ========================================== -->
+    <section id="tab-kasir" class="tab-content space-y-3">
+      
+      <!-- Search & Barcode Quick Field -->
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1">
+          <input type="text" id="pos-search-input" oninput="App.handleSearchInput(this.value)"
+            placeholder="Cari produk atau ketik barcode..."
+            class="w-full pl-9 pr-4 py-2.5 bg-white rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+          <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+        </div>
+        <button onclick="App.openBarcodeScanner()"
+          class="p-2.5 bg-white border border-gray-200 rounded-xl text-gray-600 hover:text-emerald-600 hover:border-emerald-500 shadow-sm active:scale-95">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/></svg>
+        </button>
+      </div>
+
+      <!-- Kategori Chips Carousel -->
+      <div id="category-chips" class="flex items-center gap-2 overflow-x-auto pb-1.5 scrollbar-none">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Grid Produk Kasir -->
+      <div id="pos-products-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5 sm:gap-3">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 2: MANAJEMEN PRODUK & STOK             -->
+    <!-- ========================================== -->
+    <section id="tab-produk" class="tab-content hidden space-y-4">
+      <!-- Header & Action -->
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-extrabold text-lg text-gray-800">Manajemen Produk & Stok</h2>
+          <p class="text-xs text-gray-500">Kelola harga beli (modal), harga jual, dan stok barang</p>
+        </div>
+        <button onclick="App.openNewProductModal()"
+          class="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-emerald-700 active:scale-95 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          Tambah Produk
+        </button>
+      </div>
+
+      <!-- Summary KPI Stok -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+          <span class="text-xs text-gray-500 block">Total Nilai Modal Stok</span>
+          <span id="total-inventory-asset" class="font-extrabold text-base sm:text-lg text-gray-900 mt-0.5 block">Rp 0</span>
+        </div>
+        <div class="bg-white p-3.5 rounded-xl border border-gray-200 shadow-sm">
+          <span class="text-xs text-gray-500 block">Produk Menipis / Habis</span>
+          <span id="low-stock-items-count" class="font-extrabold text-base sm:text-lg text-amber-600 mt-0.5 block">0 Produk</span>
+        </div>
+      </div>
+
+      <!-- List Produk -->
+      <div id="products-inventory-list" class="space-y-2.5">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 3: BUKU KASBON / HUTANG WARUNG         -->
+    <!-- ========================================== -->
+    <section id="tab-kasbon" class="tab-content hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-extrabold text-lg text-gray-800">Buku Kasbon Warung</h2>
+          <p class="text-xs text-gray-500">Catat hutang pelanggan, cicilan, dan tagih via WhatsApp</p>
+        </div>
+        <button onclick="App.openNewKasbonModal()"
+          class="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 text-white rounded-xl text-xs font-bold shadow-sm hover:bg-emerald-700 active:scale-95 transition">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"/></svg>
+          Catat Kasbon
+        </button>
+      </div>
+
+      <!-- Ringkasan Hutang -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="bg-red-50 border border-red-200 p-3.5 rounded-xl">
+          <span class="text-xs text-red-600 font-semibold block">Total Piutang Belum Lunas</span>
+          <span id="total-kasbon-active" class="font-extrabold text-lg text-red-700 mt-0.5 block">Rp 0</span>
+        </div>
+        <div class="bg-white border border-gray-200 p-3.5 rounded-xl">
+          <span class="text-xs text-gray-500 block">Pelanggan Berhutang</span>
+          <span id="total-debtors-count" class="font-extrabold text-lg text-gray-800 mt-0.5 block">0 Orang</span>
+        </div>
+      </div>
+
+      <!-- Daftar Kasbon -->
+      <div id="kasbon-list-container" class="space-y-3">
+        <!-- Rendered by JS -->
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 4: LAPORAN KEUANGAN & LABA             -->
+    <!-- ========================================== -->
+    <section id="tab-laporan" class="tab-content hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="font-extrabold text-lg text-gray-800">Laporan Penjualan & Keuntungan</h2>
+          <p class="text-xs text-gray-500">Pantau omset harian dan keuntungan bersih warung</p>
+        </div>
+        <button onclick="App.exportReportsToCSV()"
+          class="flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50 shadow-sm active:scale-95 transition">
+          <svg class="w-4 h-4 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+          Ekspor CSV
+        </button>
+      </div>
+
+      <!-- Filter Periode -->
+      <div class="grid grid-cols-4 gap-1.5 p-1 bg-gray-200 rounded-xl text-xs font-medium">
+        <button id="rep-btn-today" onclick="App.setReportRange('today')" class="py-1.5 rounded-lg bg-emerald-600 text-white font-bold transition">Hari Ini</button>
+        <button id="rep-btn-week" onclick="App.setReportRange('week')" class="py-1.5 rounded-lg bg-white text-gray-600 transition">7 Hari</button>
+        <button id="rep-btn-month" onclick="App.setReportRange('month')" class="py-1.5 rounded-lg bg-white text-gray-600 transition">Bulan Ini</button>
+        <button id="rep-btn-all" onclick="App.setReportRange('all')" class="py-1.5 rounded-lg bg-white text-gray-600 transition">Semua</button>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+          <span class="text-[11px] text-gray-500">Total Omset</span>
+          <span id="rep-total-omset" class="font-extrabold text-base text-gray-900 block mt-0.5">Rp 0</span>
+        </div>
+        <div class="bg-emerald-50 p-3 rounded-xl border border-emerald-200 shadow-sm">
+          <span class="text-[11px] text-emerald-800 font-semibold">Keuntungan Bersih</span>
+          <span id="rep-total-laba" class="font-extrabold text-base text-emerald-700 block mt-0.5">Rp 0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+          <span class="text-[11px] text-gray-500">Jumlah Transaksi</span>
+          <span id="rep-total-tx" class="font-extrabold text-base text-gray-900 block mt-0.5">0</span>
+        </div>
+        <div class="bg-white p-3 rounded-xl border border-gray-200 shadow-sm">
+          <span class="text-[11px] text-gray-500">Rata-rata Belanja</span>
+          <span id="rep-avg-basket" class="font-extrabold text-base text-gray-900 block mt-0.5">Rp 0</span>
+        </div>
+      </div>
+
+      <!-- Grafik Tren Omset 7 Hari -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <h4 class="font-bold text-gray-800 text-xs sm:text-sm mb-2">Tren Penjualan 7 Hari Terakhir</h4>
+        <canvas id="sales-chart-canvas" width="400" height="150" class="w-full h-auto"></canvas>
+      </div>
+
+      <!-- Top Produk Terlaris -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <h4 class="font-bold text-gray-800 text-xs sm:text-sm mb-2">🔥 5 Produk Paling Laris</h4>
+        <div id="top-products-container">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Riwayat Transaksi -->
+      <div>
+        <h4 class="font-bold text-gray-800 text-sm mb-2">Riwayat Transaksi Terbaru</h4>
+        <div id="transactions-history-list" class="space-y-2">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </section>
+
+    <!-- ========================================== -->
+    <!-- TAB 5: PENGATURAN TOKO & CLOUD SYNC        -->
+    <!-- ========================================== -->
+    <section id="tab-pengaturan" class="tab-content hidden space-y-4">
+      <div>
+        <h2 class="font-extrabold text-lg text-gray-800">Pengaturan Warung & Cloud</h2>
+        <p class="text-xs text-gray-500">Atur identitas warung, backup data, dan sinkronisasi online</p>
+      </div>
+
+      <!-- Profil Warung -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <h3 class="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Identitas Warung</h3>
+        
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Warung / Toko</label>
+          <input type="text" id="set-store-name" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Pemilik</label>
+          <input type="text" id="set-owner-name" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nomor WhatsApp Toko (untuk pesanan online)</label>
+          <input type="text" id="set-phone" placeholder="Contoh: 081234567890" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Alamat Warung</label>
+          <input type="text" id="set-address" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Catatan Kaki Struk (Footer)</label>
+          <textarea id="set-footer" rows="2" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Merchant QRIS</label>
+          <input type="text" id="set-qris-name" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-sm">
+        </div>
+
+        <button onclick="App.saveStoreSettings()"
+          class="w-full py-2.5 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 transition">
+          Simpan Profil Warung
+        </button>
+      </div>
+
+      <!-- Cloud Sync & Online Mode -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+          <div>
+            <h3 class="font-bold text-sm text-gray-800">Sinkronisasi Cloud Online</h3>
+            <p class="text-[11px] text-gray-500">Sinkronkan produk, stok, dan kasbon antar HP Android</p>
+          </div>
+          <label class="relative inline-flex items-center cursor-pointer">
+            <input type="checkbox" id="cloud-toggle" class="sr-only peer">
+            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Firebase Realtime DB URL (Gratis)</label>
+          <input type="text" id="cloud-firebase-url" placeholder="https://namaproyek-default-rtdb.asia-southeast1.firebasedatabase.app"
+            class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-xs font-mono">
+          <p class="text-[10px] text-gray-400 mt-1">Gunakan URL Firebase Realtime Database gratis Anda untuk sinkronisasi multi-perangkat.</p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Kode Unik Warung (Store Key)</label>
+          <input type="text" id="cloud-store-key" class="w-full px-3 py-2 bg-gray-50 rounded-lg border border-gray-300 text-xs font-mono">
+        </div>
+
+        <div class="flex items-center justify-between pt-1">
+          <span id="cloud-last-sync-time" class="text-[11px] text-gray-400">Belum pernah sinkron</span>
+          <button id="btn-sync-cloud-now" onclick="App.triggerCloudSyncNow()"
+            class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-300 rounded-lg text-xs font-bold hover:bg-emerald-100 transition">
+            🔄 Sinkronkan Sekarang
+          </button>
+        </div>
+
+        <button onclick="App.saveCloudSettings()"
+          class="w-full py-2 bg-emerald-600 text-white font-bold rounded-xl text-xs hover:bg-emerald-700 transition">
+          Simpan Konfigurasi Cloud
+        </button>
+      </div>
+
+      <!-- Backup & Restore Data -->
+      <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm space-y-3">
+        <h3 class="font-bold text-sm text-gray-800 border-b border-gray-100 pb-2">Cadangan & Pemulihan (Backup & Restore)</h3>
+        
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="App.exportBackupFile()"
+            class="flex items-center justify-center gap-1.5 py-2.5 bg-blue-50 text-blue-700 border border-blue-200 rounded-xl text-xs font-bold hover:bg-blue-100 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            Download Backup
+          </button>
+
+          <label class="flex items-center justify-center gap-1.5 py-2.5 bg-gray-50 text-gray-700 border border-gray-300 rounded-xl text-xs font-bold hover:bg-gray-100 transition cursor-pointer">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+            Restore File
+            <input type="file" accept=".json" onchange="App.importBackupFile(event)" class="hidden">
+          </label>
+        </div>
+
+        <div class="border-t border-gray-100 pt-3">
+          <button onclick="App.resetAllData()"
+            class="w-full py-2 text-red-600 hover:bg-red-50 rounded-xl text-xs font-semibold transition">
+            ⚠️ Reset Database ke Data Awal
+          </button>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- MOBILE FLOATING CART BAR (WHEN CART > 0)   -->
+  <!-- ========================================== -->
+  <div id="mobile-cart-bar" class="hidden fixed bottom-16 left-0 right-0 z-30 p-3 max-w-4xl mx-auto pointer-events-none">
+    <div class="bg-emerald-800 text-white p-3 rounded-2xl shadow-xl flex items-center justify-between pointer-events-auto border border-emerald-600/40">
+      <div onclick="App.openCartDrawer()" class="cursor-pointer flex-1">
+        <span id="mobile-cart-items-text" class="text-xs text-emerald-200 block">0 item di keranjang</span>
+        <span id="mobile-cart-total" class="font-extrabold text-base text-white">Rp 0</span>
+      </div>
+      <button onclick="App.openCheckoutModal()"
+        class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-extrabold text-xs shadow-md active:scale-95 transition">
+        Bayar Sekarang →
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM NAVIGATION BAR (NATIVE ANDROID LOOK)-->
+  <!-- ========================================== -->
+  <nav class="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
+    <div class="max-w-4xl mx-auto flex items-center justify-around py-1.5">
+      <button data-tab="kasir" class="nav-tab-btn flex flex-col items-center py-1 text-emerald-600 font-bold transition">
+        <div class="relative">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+          <span id="cart-floating-count" class="hidden absolute -top-1.5 -right-2 bg-emerald-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center">0</span>
+        </div>
+        <span class="text-[11px] mt-0.5">Kasir</span>
+      </button>
+
+      <button data-tab="produk" class="nav-tab-btn flex flex-col items-center py-1 text-gray-500 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        <span class="text-[11px] mt-0.5">Produk</span>
+      </button>
+
+      <button data-tab="kasbon" class="nav-tab-btn flex flex-col items-center py-1 text-gray-500 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+        <span class="text-[11px] mt-0.5">Kasbon</span>
+      </button>
+
+      <button data-tab="laporan" class="nav-tab-btn flex flex-col items-center py-1 text-gray-500 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        <span class="text-[11px] mt-0.5">Laporan</span>
+      </button>
+
+      <button data-tab="pengaturan" class="nav-tab-btn flex flex-col items-center py-1 text-gray-500 transition">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+        <span class="text-[11px] mt-0.5">Toko</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ========================================== -->
+  <!-- MODAL: KERANJANG DRAWER (SIDEBAR / SHEET)  -->
+  <!-- ========================================== -->
+  <div id="cart-drawer-modal" class="hidden fixed inset-0 z-50 bg-black/50 backdrop-blur-sm flex justify-end">
+    <div class="bg-white w-full max-w-md h-full flex flex-col shadow-2xl animate-in slide-in-from-right duration-200">
+      <div class="p-4 bg-emerald-700 text-white flex items-center justify-between">
+        <h3 class="font-extrabold text-base flex items-center gap-2">
+          <span>🛒</span> Keranjang Belanja
+        </h3>
+        <button onclick="App.closeCartDrawer()" class="p-1 hover:bg-emerald-800 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Item List -->
+      <div id="cart-items-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+        <!-- Rendered by JS -->
+      </div>
+
+      <!-- Footer Cart -->
+      <div class="p-4 border-t border-gray-200 bg-gray-50 space-y-2.5">
+        <div class="flex justify-between text-xs text-gray-500">
+          <span>Subtotal</span>
+          <span id="cart-subtotal" class="font-semibold text-gray-800">Rp 0</span>
+        </div>
+        <div class="flex justify-between text-base font-extrabold text-gray-900 border-t border-gray-200 pt-2">
+          <span>Total Akhir</span>
+          <span id="cart-total" class="text-emerald-700">Rp 0</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 pt-2">
+          <button onclick="App.clearCart()"
+            class="py-2.5 rounded-xl border border-gray-300 text-gray-600 font-bold text-xs hover:bg-gray-100">
+            Kosongkan
+          </button>
+          <button onclick="App.openCheckoutModal()"
+            class="py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md">
+            Bayar Sekarang
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CHECKOUT & METODE PEMBAYARAN        -->
+  <!-- ========================================== -->
+  <div id="checkout-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-5 space-y-4">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-3">
+        <h3 class="font-extrabold text-base text-gray-900">Pembayaran Kasir</h3>
+        <button onclick="App.closeCheckoutModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Grand Total Banner -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center">
+        <span class="text-xs font-semibold text-emerald-800 uppercase tracking-wider">Total yang Harus Dibayar</span>
+        <div id="checkout-grand-total" class="text-2xl sm:text-3xl font-black text-emerald-800 mt-0.5">Rp 0</div>
+      </div>
+
+      <!-- Pilih Metode Pembayaran -->
+      <div>
+        <label class="block text-xs font-bold text-gray-700 mb-2">Pilih Cara Pembayaran:</label>
+        <div class="grid grid-cols-3 gap-2">
+          <button id="pay-method-tunai" onclick="App.setPaymentMethod('TUNAI')"
+            class="py-3 px-2 rounded-xl border border-gray-200 text-xs font-bold flex flex-col items-center gap-1 transition">
+            <span class="text-xl">💵</span>
+            <span>Tunai (Cash)</span>
+          </button>
+          <button id="pay-method-qris" onclick="App.setPaymentMethod('QRIS')"
+            class="py-3 px-2 rounded-xl border border-gray-200 text-xs font-bold flex flex-col items-center gap-1 transition">
+            <span class="text-xl">📱</span>
+            <span>QRIS / Transfer</span>
+          </button>
+          <button id="pay-method-kasbon" onclick="App.setPaymentMethod('KASBON')"
+            class="py-3 px-2 rounded-xl border border-gray-200 text-xs font-bold flex flex-col items-center gap-1 transition">
+            <span class="text-xl">📒</span>
+            <span>Kasbon (Hutang)</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Section: TUNAI (CASH) -->
+      <div id="pay-section-tunai" class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nominal Uang Diterima (Rp)</label>
+          <input type="number" id="cash-input" oninput="App.updateCashChange()"
+            class="w-full px-3 py-2.5 bg-gray-50 border border-gray-300 rounded-xl text-lg font-bold font-mono focus:ring-2 focus:ring-emerald-500">
+        </div>
+
+        <!-- Quick Cash Buttons -->
+        <div class="grid grid-cols-4 gap-1.5 text-xs font-semibold">
+          <button onclick="App.setCashAmount(App.getCartTotals().total)" class="py-2 bg-emerald-100 text-emerald-800 rounded-lg hover:bg-emerald-200">Uang Pas</button>
+          <button onclick="App.setCashAmount(10000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">10.000</button>
+          <button onclick="App.setCashAmount(20000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">20.000</button>
+          <button onclick="App.setCashAmount(50000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">50.000</button>
+          <button onclick="App.setCashAmount(100000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">100.000</button>
+          <button onclick="App.setCashAmount(200000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">200.000</button>
+          <button onclick="App.addCash(5000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">+5.000</button>
+          <button onclick="App.addCash(10000)" class="py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200">+10.000</button>
+        </div>
+
+        <!-- Kembalian Display -->
+        <div id="change-box" class="p-3 bg-emerald-50 rounded-xl border border-emerald-200 flex items-center justify-between">
+          <span class="text-xs font-bold text-gray-700">Uang Kembalian:</span>
+          <span id="cash-change-display" class="font-black text-base text-emerald-800">Rp 0</span>
+        </div>
+      </div>
+
+      <!-- Section: QRIS -->
+      <div id="pay-section-qris" class="hidden text-center space-y-2 py-2">
+        <p class="text-xs text-gray-500">Minta pembeli scan kode QRIS berikut dengan GoPay/OVO/Dana/BCA/BSI/ShopeePay:</p>
+        <div class="inline-block p-3 bg-white border border-gray-300 rounded-2xl shadow-sm">
+          <canvas id="qris-canvas" width="220" height="280" class="mx-auto rounded"></canvas>
+        </div>
+      </div>
+
+      <!-- Section: KASBON -->
+      <div id="pay-section-kasbon" class="hidden space-y-3">
+        <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-800">
+          ⚠️ Transaksi ini akan dicatat ke <b>Buku Kasbon</b> dan tidak menambah uang tunai di laci saat ini.
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Nama Pelanggan (Wajib)</label>
+          <input type="text" id="kasbon-customer-name" placeholder="Misal: Bu Siti, Pak Joko"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">No. WhatsApp Pelanggan (Opsional untuk tagih)</label>
+          <input type="text" id="kasbon-customer-phone" placeholder="08xxxxxxxxxx"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Perkiraan Tanggal Bayar</label>
+          <input type="date" id="kasbon-due-date" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+        </div>
+      </div>
+
+      <!-- Submit Transaction -->
+      <button onclick="App.processTransaction()"
+        class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-xl shadow-lg active:scale-95 transition">
+        Selesaikan Transaksi (Cetak / Simpan)
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: STRUK BELANJA & THERMAL PRINT       -->
+  <!-- ========================================== -->
+  <div id="receipt-modal" class="hidden fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-4 flex flex-col max-h-[92vh]">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2 mb-2 no-print">
+        <h3 class="font-extrabold text-sm text-gray-800 flex items-center gap-1.5">
+          <span>🧾</span> Struk Pembelian
+        </h3>
+        <button onclick="App.closeReceiptModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Kertas Struk Thermal Preview -->
+      <div class="flex-1 overflow-y-auto p-3 bg-gray-50 rounded-xl border border-gray-200 font-mono">
+        <div id="receipt-paper-content" class="bg-white p-3 rounded shadow-sm text-xs text-gray-800">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="mt-3 space-y-2 no-print">
+        <div class="grid grid-cols-2 gap-2">
+          <button onclick="App.printReceipt()"
+            class="flex items-center justify-center gap-1.5 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 active:scale-95 transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            Cetak Struk
+          </button>
+          <button onclick="App.shareReceiptWhatsApp()"
+            class="flex items-center justify-center gap-1.5 py-2.5 bg-green-500 text-white rounded-xl text-xs font-bold hover:bg-green-600 active:scale-95 transition">
+            <span>💬</span>
+            Kirim WhatsApp
+          </button>
+        </div>
+        <button onclick="App.closeReceiptModal()"
+          class="w-full py-2 bg-gray-100 text-gray-700 rounded-xl text-xs font-semibold hover:bg-gray-200">
+          Tutup & Transaksi Baru
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: FORM PRODUK (TAMBAH / EDIT)         -->
+  <!-- ========================================== -->
+  <div id="product-form-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-4 max-h-[90vh] overflow-y-auto space-y-3">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <h3 id="modal-product-title" class="font-extrabold text-base text-gray-800">Tambah Produk Baru</h3>
+        <button onclick="App.closeProductModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Nama Produk</label>
+          <input type="text" id="prod-form-name" placeholder="Misal: Beras Ramos 5kg" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Kategori</label>
+            <select id="prod-form-category" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+              <option value="sembako">🌾 Sembako</option>
+              <option value="minuman">🥤 Minuman</option>
+              <option value="makanan">🍪 Makanan & Snack</option>
+              <option value="rokok">🚬 Rokok</option>
+              <option value="bumbu">🧂 Bumbu Dapur</option>
+              <option value="kebersihan">🧼 Kebersihan</option>
+              <option value="digital">⚡ Pulsa & Listrik</option>
+            </select>
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Ikon / Emoji</label>
+            <input type="text" id="prod-form-icon" value="📦" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-center">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Harga Modal / Beli (Rp)</label>
+            <input type="number" id="prod-form-cost" placeholder="0" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Harga Jual (Rp)</label>
+            <input type="number" id="prod-form-sell" placeholder="0" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-emerald-700">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-2">
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Stok Saat Ini</label>
+            <input type="number" id="prod-form-stock" value="10" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Batas Minimum</label>
+            <input type="number" id="prod-form-minstock" value="3" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+          </div>
+          <div>
+            <label class="block font-semibold text-gray-700 mb-1">Satuan</label>
+            <input type="text" id="prod-form-unit" value="pcs" placeholder="pcs/kg/bungkus" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+          </div>
+        </div>
+
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Kode Barcode / SKU</label>
+          <div class="flex gap-1.5">
+            <input type="text" id="prod-form-barcode" placeholder="Scan atau ketik kode barcode" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-mono">
+            <button type="button" onclick="App.openBarcodeScanner()" class="px-3 bg-gray-100 hover:bg-gray-200 rounded-lg border border-gray-300">
+              📷
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pt-2 flex gap-2">
+        <button onclick="App.closeProductModal()" class="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 font-semibold text-xs">
+          Batal
+        </button>
+        <button onclick="App.saveProductForm()" class="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl shadow">
+          Simpan Produk
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: CATAT KASBON MANUAL                 -->
+  <!-- ========================================== -->
+  <div id="new-kasbon-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-4 space-y-3">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <h3 class="font-extrabold text-base text-gray-800">Catat Kasbon Baru</h3>
+        <button onclick="App.closeNewKasbonModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="space-y-2.5 text-xs">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Nama Pelanggan (Wajib)</label>
+          <input type="text" id="manual-kasbon-name" placeholder="Misal: Bu Siti" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Nomor WhatsApp Pelanggan</label>
+          <input type="text" id="manual-kasbon-phone" placeholder="08xxxxxxxxxx" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Jumlah Hutang (Rp)</label>
+          <input type="number" id="manual-kasbon-amount" placeholder="0" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm font-bold text-red-600">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Rincian Barang yang Diambil</label>
+          <textarea id="manual-kasbon-desc" rows="2" placeholder="Contoh: Beras 5kg, Telur 1kg" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Janji Tanggal Bayar</label>
+          <input type="date" id="manual-kasbon-due" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm">
+        </div>
+      </div>
+
+      <div class="pt-2 flex gap-2">
+        <button onclick="App.closeNewKasbonModal()" class="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 font-semibold text-xs">
+          Batal
+        </button>
+        <button onclick="App.saveNewKasbon()" class="flex-1 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow">
+          Simpan Kasbon
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: PEMBAYARAN / CICILAN KASBON         -->
+  <!-- ========================================== -->
+  <div id="pay-kasbon-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-3">
+    <div class="bg-white w-full max-w-sm rounded-2xl shadow-2xl p-4 space-y-3">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <h3 class="font-extrabold text-base text-gray-800">Catat Pembayaran Kasbon</h3>
+        <button onclick="App.closePayKasbonModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="p-3 bg-gray-50 rounded-xl space-y-1 text-xs">
+        <div class="flex justify-between">
+          <span class="text-gray-500">Pelanggan:</span>
+          <span id="pay-kasbon-customer-display" class="font-bold text-gray-800">-</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-gray-500">Sisa Hutang:</span>
+          <span id="pay-kasbon-remaining-display" class="font-extrabold text-red-600">-</span>
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-700 mb-1">Jumlah yang Dibayarkan (Rp)</label>
+        <input type="number" id="pay-kasbon-amount-input" class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-base font-bold text-emerald-700">
+      </div>
+
+      <div class="flex gap-2 pt-1">
+        <button onclick="App.closePayKasbonModal()" class="flex-1 py-2 rounded-xl border border-gray-300 text-gray-600 font-semibold text-xs">
+          Batal
+        </button>
+        <button onclick="App.submitPayKasbon()" class="flex-1 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow">
+          Konfirmasi Pembayaran
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MODAL: SCANNER BARCODE KAMERA ANDROID      -->
+  <!-- ========================================== -->
+  <div id="barcode-scanner-modal" class="hidden fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4">
+    <div class="w-full max-w-sm bg-gray-900 rounded-2xl overflow-hidden shadow-2xl relative border border-gray-700">
+      <div class="p-3 bg-gray-800 text-white flex items-center justify-between">
+        <span class="font-bold text-xs flex items-center gap-1.5">
+          <span>📷</span> Arahkan ke Barcode Produk
+        </span>
+        <button onclick="App.closeBarcodeScanner()" class="p-1 text-gray-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="relative w-full aspect-square bg-black flex items-center justify-center overflow-hidden">
+        <video id="scanner-video" autoplay playsinline class="w-full h-full object-cover"></video>
+        
+        <!-- Target Reticle Box -->
+        <div class="absolute w-48 h-36 border-2 border-emerald-400 rounded-xl pointer-events-none shadow-[0_0_15px_rgba(16,185,129,0.5)]">
+          <div class="w-full h-0.5 bg-red-500 absolute top-1/2 -translate-y-1/2 animate-pulse"></div>
+        </div>
+
+        <div id="scanner-error-hint" class="hidden absolute inset-0 bg-black/80 flex flex-col items-center justify-center p-4 text-center text-white text-xs">
+          <span class="text-3xl mb-2">📸</span>
+          <p class="font-semibold text-red-400">Kamera tidak dapat diakses</p>
+          <p class="text-gray-400 mt-1">Pastikan izin kamera diizinkan di browser Android Anda atau gunakan input manual di bawah.</p>
+        </div>
+      </div>
+
+      <!-- Manual Barcode Fallback -->
+      <div class="p-3 bg-gray-800 border-t border-gray-700">
+        <div class="flex gap-1.5">
+          <input type="text" id="manual-barcode-input" placeholder="Atau ketik angka barcode..."
+            class="flex-1 px-3 py-1.5 bg-gray-900 text-white border border-gray-600 rounded-lg text-xs font-mono">
+          <button onclick="App.manualBarcodeSubmit()" class="px-3 py-1.5 bg-emerald-600 text-white font-bold text-xs rounded-lg">
+            Cari
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION FLOATING -->
+  <div id="app-toast" class="fixed top-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold shadow-lg transition-all duration-300 opacity-0 pointer-events-none">
+    Pesan Notifikasi
+  </div>
+
+  <!-- Script Modules -->
+  <script src="./db.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,31 @@
+{
+  "name": "warungku-android-pos",
+  "version": "1.0.0",
+  "description": "Aplikasi Kasir Warung Lengkap, Kasbon, Stok, dan Toko Online Android",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve .",
+    "android:init": "npx cap init WarungKu com.warungku.pos --web-dir .",
+    "android:add": "npx cap add android",
+    "android:sync": "npx cap sync android",
+    "android:open": "npx cap open android",
+    "android:build": "npx cap run android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.0.0",
+    "@capacitor/cli": "^6.0.0",
+    "@capacitor/core": "^6.0.0"
+  },
+  "keywords": [
+    "warung",
+    "pos",
+    "kasir",
+    "kasbon",
+    "android",
+    "qris",
+    "struk",
+    "indonesia"
+  ],
+  "author": "WarungKu Team",
+  "license": "MIT"
+}

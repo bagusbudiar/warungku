@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#059669">
+  <title>Katalog Online Warung</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-50 text-gray-900 min-h-screen pb-24 font-sans antialiased">
+
+  <!-- Header Toko Online -->
+  <header class="bg-emerald-700 text-white shadow-md sticky top-0 z-30">
+    <div class="max-w-2xl mx-auto px-4 py-3 flex items-center justify-between">
+      <div class="flex items-center gap-2.5">
+        <span class="text-2xl p-1.5 bg-emerald-800 rounded-xl">🏪</span>
+        <div>
+          <h1 id="store-title" class="font-extrabold text-sm sm:text-base leading-tight">WarungKu Online</h1>
+          <p id="store-desc" class="text-xs text-emerald-200">Pesan langsung & siap diantar / ambil di warung</p>
+        </div>
+      </div>
+      <a href="./index.html" class="px-2.5 py-1 bg-emerald-800 hover:bg-emerald-900 text-emerald-100 rounded-lg text-xs font-semibold border border-emerald-600/40">
+        Mode Kasir ➔
+      </a>
+    </div>
+  </header>
+
+  <!-- Banner Sambutan -->
+  <div class="max-w-2xl mx-auto p-4">
+    <div class="bg-gradient-to-r from-emerald-600 to-teal-700 text-white rounded-2xl p-4 shadow-sm flex items-center justify-between">
+      <div>
+        <span class="text-[11px] font-semibold uppercase tracking-wider bg-emerald-800/60 px-2 py-0.5 rounded-full text-emerald-200">Belanja Praktis</span>
+        <h2 class="font-extrabold text-lg mt-1">Pesan Sembako & Kebutuhan</h2>
+        <p class="text-xs text-emerald-100 mt-0.5">Pilih barang, klik pesan, order masuk ke WhatsApp warung!</p>
+      </div>
+      <div class="text-4xl hidden sm:block">🛵</div>
+    </div>
+
+    <!-- Search & Filter -->
+    <div class="mt-4 flex items-center gap-2">
+      <div class="relative flex-1">
+        <input type="text" id="cust-search" oninput="Storefront.filter()"
+          placeholder="Cari beras, minyak, mie, minuman..."
+          class="w-full pl-9 pr-4 py-2 bg-white rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+        <svg class="w-4 h-4 text-gray-400 absolute left-3 top-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+      </div>
+    </div>
+
+    <!-- Kategori Filter -->
+    <div id="cust-category-chips" class="mt-3 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+      <!-- Injected by JS -->
+    </div>
+
+    <!-- Produk Grid -->
+    <div id="cust-product-grid" class="mt-4 grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <!-- Injected by JS -->
+    </div>
+  </div>
+
+  <!-- Floating Checkout Bar -->
+  <div id="cust-floating-bar" class="hidden fixed bottom-4 left-0 right-0 z-40 max-w-2xl mx-auto px-4">
+    <div class="bg-emerald-800 text-white p-3.5 rounded-2xl shadow-2xl border border-emerald-600 flex items-center justify-between">
+      <div>
+        <span id="cust-cart-count" class="text-xs text-emerald-200 block">0 barang</span>
+        <span id="cust-cart-total" class="font-black text-base text-white">Rp 0</span>
+      </div>
+      <button onclick="Storefront.openOrderModal()"
+        class="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-white rounded-xl font-bold text-xs shadow transition active:scale-95">
+        Lanjut Pesan via WA 💬
+      </button>
+    </div>
+  </div>
+
+  <!-- Modal Checkout Pemesan -->
+  <div id="cust-order-modal" class="hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-2xl max-h-[90vh] overflow-y-auto p-5 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-2">
+        <h3 class="font-extrabold text-base text-gray-800">Rincian Pesanan Anda</h3>
+        <button onclick="Storefront.closeOrderModal()" class="p-1 text-gray-400 hover:text-gray-600">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- Item ringkasan -->
+      <div id="cust-order-items" class="space-y-2 max-h-48 overflow-y-auto pr-1 text-xs">
+        <!-- Injected -->
+      </div>
+
+      <div class="p-3 bg-gray-50 rounded-xl border border-gray-200 flex justify-between font-extrabold text-sm text-gray-900">
+        <span>Total Pembayaran:</span>
+        <span id="cust-modal-total" class="text-emerald-700">Rp 0</span>
+      </div>
+
+      <!-- Data Pelanggan -->
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Nama Pemesan (Wajib)</label>
+          <input type="text" id="cust-name-input" placeholder="Nama Anda"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Metode Pengambilan</label>
+          <select id="cust-delivery-method" onchange="Storefront.toggleAddressField(this.value)"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+            <option value="DELIVERY">🛵 Diantar ke Rumah / Tempat</option>
+            <option value="PICKUP">🚶 Ambil Sendiri di Warung</option>
+          </select>
+        </div>
+        <div id="cust-address-group">
+          <label class="block font-semibold text-gray-700 mb-1">Alamat Lengkap Pengiriman</label>
+          <textarea id="cust-address-input" rows="2" placeholder="Jl. Melati No. 4, RT 02/03 (Patokan cat pagar hijau)"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm"></textarea>
+        </div>
+        <div>
+          <label class="block font-semibold text-gray-700 mb-1">Catatan Tambahan (Opsional)</label>
+          <input type="text" id="cust-notes-input" placeholder="Misal: Minuman tolong yang dingin ya"
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-xl text-sm">
+        </div>
+      </div>
+
+      <button onclick="Storefront.submitOrderToWhatsApp()"
+        class="w-full py-3 bg-green-600 hover:bg-green-700 text-white font-extrabold text-sm rounded-xl shadow-lg active:scale-95 transition flex items-center justify-center gap-2">
+        <span>💬</span> Kirim Pesanan ke WhatsApp Warung
+      </button>
+    </div>
+  </div>
+
+  <script src="./db.js"></script>
+  <script>
+    const Storefront = {
+      cart: {},
+      selectedCat: 'all',
+      query: '',
+
+      init() {
+        const settings = window.warungDB.getSettings();
+        document.getElementById('store-title').textContent = settings.storeName || 'WarungKu';
+        document.getElementById('store-desc').textContent = settings.address || 'Pesan online mudah & cepat';
+
+        this.renderCategories();
+        this.renderProducts();
+      },
+
+      renderCategories() {
+        const cats = window.warungDB.getCategories();
+        const container = document.getElementById('cust-category-chips');
+        container.innerHTML = cats.map(c => `
+          <button onclick="Storefront.setCategory('${c.id}')"
+            class="flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+              this.selectedCat === c.id ? 'bg-emerald-600 text-white' : 'bg-white text-gray-700 border border-gray-200'
+            }">
+            ${c.icon} ${c.name}
+          </button>
+        `).join('');
+      },
+
+      setCategory(catId) {
+        this.selectedCat = catId;
+        this.renderCategories();
+        this.renderProducts();
+      },
+
+      filter() {
+        this.query = document.getElementById('cust-search').value.toLowerCase().trim();
+        this.renderProducts();
+      },
+
+      renderProducts() {
+        const prods = window.warungDB.getProducts();
+        const grid = document.getElementById('cust-product-grid');
+
+        const filtered = prods.filter(p => {
+          const matchCat = this.selectedCat === 'all' || p.category === this.selectedCat;
+          const matchSearch = !this.query || p.name.toLowerCase().includes(this.query);
+          return matchCat && matchSearch && (p.category === 'digital' || p.stock > 0);
+        });
+
+        if (filtered.length === 0) {
+          grid.innerHTML = '<div class="col-span-full py-12 text-center text-gray-400">Tidak ada produk ditemukan</div>';
+          return;
+        }
+
+        grid.innerHTML = filtered.map(p => {
+          const qtyInCart = this.cart[p.id] || 0;
+          return `
+            <div class="bg-white rounded-xl p-3 border border-gray-200 shadow-sm flex flex-col justify-between">
+              <div>
+                <span class="text-3xl p-1.5 bg-gray-50 rounded-lg inline-block">${p.icon || '📦'}</span>
+                <h4 class="font-bold text-gray-800 text-xs sm:text-sm mt-2 line-clamp-2">${p.name}</h4>
+              </div>
+
+              <div class="mt-3 pt-2 border-t border-gray-100 flex items-center justify-between">
+                <span class="text-emerald-700 font-extrabold text-xs sm:text-sm">Rp ${p.sellPrice.toLocaleString('id-ID')}</span>
+                
+                ${qtyInCart > 0 ? `
+                  <div class="flex items-center gap-1">
+                    <button onclick="Storefront.changeQty('${p.id}', -1)" class="w-6 h-6 rounded bg-gray-100 font-bold text-xs">-</button>
+                    <span class="w-5 text-center text-xs font-bold">${qtyInCart}</span>
+                    <button onclick="Storefront.changeQty('${p.id}', 1)" class="w-6 h-6 rounded bg-emerald-600 text-white font-bold text-xs">+</button>
+                  </div>
+                ` : `
+                  <button onclick="Storefront.changeQty('${p.id}', 1)" class="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-bold hover:bg-emerald-700 active:scale-95">
+                    + Beli
+                  </button>
+                `}
+              </div>
+            </div>
+          `;
+        }).join('');
+      },
+
+      changeQty(prodId, delta) {
+        const prod = window.warungDB.getProductById(prodId);
+        if (!prod) return;
+
+        const current = this.cart[prodId] || 0;
+        const next = current + delta;
+
+        if (next <= 0) {
+          delete this.cart[prodId];
+        } else {
+          if (prod.category !== 'digital' && next > prod.stock) {
+            alert('Maksimal stok tercapai: ' + prod.stock);
+            return;
+          }
+          this.cart[prodId] = next;
+        }
+
+        this.renderProducts();
+        this.updateCartBar();
+      },
+
+      updateCartBar() {
+        const bar = document.getElementById('cust-floating-bar');
+        const countEl = document.getElementById('cust-cart-count');
+        const totalEl = document.getElementById('cust-cart-total');
+
+        const keys = Object.keys(this.cart);
+        let totalItems = 0;
+        let totalPrice = 0;
+
+        keys.forEach(k => {
+          const p = window.warungDB.getProductById(k);
+          if (p) {
+            totalItems += this.cart[k];
+            totalPrice += p.sellPrice * this.cart[k];
+          }
+        });
+
+        if (totalItems > 0) {
+          bar.classList.remove('hidden');
+          countEl.textContent = `${totalItems} barang dipilih`;
+          totalEl.textContent = 'Rp ' + totalPrice.toLocaleString('id-ID');
+        } else {
+          bar.classList.add('hidden');
+        }
+      },
+
+      openOrderModal() {
+        const modal = document.getElementById('cust-order-modal');
+        const list = document.getElementById('cust-order-items');
+        const totalEl = document.getElementById('cust-modal-total');
+
+        let totalPrice = 0;
+        let itemsHtml = '';
+
+        Object.keys(this.cart).forEach(id => {
+          const p = window.warungDB.getProductById(id);
+          const qty = this.cart[id];
+          if (p) {
+            const line = p.sellPrice * qty;
+            totalPrice += line;
+            itemsHtml += `
+              <div class="flex justify-between items-center py-1 border-b border-gray-100">
+                <span>${p.name} (${qty}x)</span>
+                <span class="font-mono font-semibold">Rp ${line.toLocaleString('id-ID')}</span>
+              </div>
+            `;
+          }
+        });
+
+        list.innerHTML = itemsHtml;
+        totalEl.textContent = 'Rp ' + totalPrice.toLocaleString('id-ID');
+        modal.classList.remove('hidden');
+      },
+
+      closeOrderModal() {
+        document.getElementById('cust-order-modal').classList.add('hidden');
+      },
+
+      toggleAddressField(method) {
+        const addr = document.getElementById('cust-address-group');
+        if (addr) addr.classList.toggle('hidden', method === 'PICKUP');
+      },
+
+      submitOrderToWhatsApp() {
+        const name = document.getElementById('cust-name-input').value.trim();
+        const method = document.getElementById('cust-delivery-method').value;
+        const address = document.getElementById('cust-address-input').value.trim();
+        const notes = document.getElementById('cust-notes-input').value.trim();
+        const settings = window.warungDB.getSettings();
+
+        if (!name) {
+          alert('Mohon isi nama Anda terlebih dahulu');
+          return;
+        }
+
+        if (method === 'DELIVERY' && !address) {
+          alert('Mohon masukkan alamat pengiriman');
+          return;
+        }
+
+        let total = 0;
+        let text = `*PESANAN ONLINE BARU - ${settings.storeName.toUpperCase()}*\n`;
+        text += `------------------------------------\n`;
+        text += `Nama Pembeli : ${name}\n`;
+        text += `Metode       : ${method === 'DELIVERY' ? '🛵 Diantar ke Rumah' : '🚶 Ambil di Warung'}\n`;
+        if (method === 'DELIVERY') text += `Alamat       : ${address}\n`;
+        if (notes) text += `Catatan      : ${notes}\n`;
+        text += `------------------------------------\n`;
+        text += `*DAFTAR PESANAN:*\n`;
+
+        Object.keys(this.cart).forEach(id => {
+          const p = window.warungDB.getProductById(id);
+          const qty = this.cart[id];
+          if (p) {
+            const line = p.sellPrice * qty;
+            total += line;
+            text += `• ${p.name} (${qty}x) - Rp ${line.toLocaleString('id-ID')}\n`;
+          }
+        });
+
+        text += `------------------------------------\n`;
+        text += `*TOTAL PEMBAYARAN: Rp ${total.toLocaleString('id-ID')}*\n\n`;
+        text += `Mohon konfirmasi ketersediaan dan segera diproses ya warung. Terima kasih! 🙏`;
+
+        let waPhone = settings.phone || '081234567890';
+        let clean = waPhone.replace(/[^0-9]/g, '');
+        if (clean.startsWith('0')) clean = '62' + clean.slice(1);
+
+        const url = `https://api.whatsapp.com/send?phone=${clean}&text=${encodeURIComponent(text)}`;
+        window.open(url, '_blank');
+        this.closeOrderModal();
+      }
+    };
+
+    window.addEventListener('DOMContentLoaded', () => Storefront.init());
+  </script>
+</body>
+</html>
